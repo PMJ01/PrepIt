@@ -1,4 +1,4 @@
-prepcore/
+Prepit/
 ├── package.json
 ├── index.html
 ├── postcss.config.js
@@ -16,7 +16,9 @@ prepcore/
 │   ├── db_connect.php
 │   ├── auth_middleware.php
 │   ├── login.php
-│   └── get_notes.php
+│   ├── get_notes.php
+│   ├── seed_practice_questions.php
+│   └── get_practice_questions.php
 ├── backend-java/
 │   ├── AuthFilter.java
 │   └── CodingProblemsServlet.java
