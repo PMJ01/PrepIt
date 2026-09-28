@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 
-const PHP_BASE_URL = import.meta.env.VITE_PHP_BASE_URL
-  || (window.location.port === "5173" ? "http://localhost/backend-php" : "/backend-php");
-const JAVA_BASE_URL = import.meta.env.VITE_JAVA_BASE_URL
-  || (window.location.port === "5173" ? "http://localhost:8080" : "");
+
+const PHP_BASE_URL = import.meta.env.VITE_PHP_BASE_URL || "http://localhost:8000";
+const JAVA_BASE_URL = import.meta.env.VITE_JAVA_BASE_URL || (window.location.port === "5173" ? "http://localhost:8080" : "");
 
 // Helper function to get greeting based on the current hour
 function getGreeting() {
@@ -16,12 +15,19 @@ function getGreeting() {
 }
 
 // Helper function to get user name from stored session data
+// Helper function to get user name from stored session data
 function getUserName() {
   try {
     const saved = localStorage.getItem("auth_token") || localStorage.getItem("prepcore_user");
     if (saved) {
       const parsed = JSON.parse(saved);
+      // Check for username (new DB column) or full_name (old DB column)
+      if (parsed.username) return parsed.username;
       if (parsed.full_name) return parsed.full_name;
+      
+      // If the entire PHP response object was saved by accident, check inside parsed.user
+      if (parsed.user && parsed.user.username) return parsed.user.username;
+      if (parsed.user && parsed.user.full_name) return parsed.user.full_name;
     }
   } catch (e) {
     // fallback
@@ -29,26 +35,7 @@ function getUserName() {
   return localStorage.getItem("user_name") || "Student";
 }
 
-const practiceData = [
-  ["two-sum", "Two Sum, done properly", "DSA", "Easy", "49.2", "18 min", ["Arrays", "Hash Map"], "Given an array of integers and a target, return the indices of two values that add up to the target.", "Use a hash map to store each value as you pass through the array. The complement is target minus the current value."],
-  ["valid-parentheses", "Valid parentheses", "DSA", "Easy", "42.6", "14 min", ["Stack", "Strings"], "Determine whether every opening bracket is closed by the same type in the correct order.", "Push opening brackets and match each closing bracket against the most recent opening bracket."],
-  ["binary-search", "Binary search", "DSA", "Easy", "58.0", "14 min", ["Search", "Arrays"], "Find a target in a sorted array and return its index, or -1 if it is absent.", "Keep inclusive left and right bounds. Discard the half that cannot contain the target."],
-  ["course-schedule", "Course schedule", "DSA", "Medium", "47.7", "27 min", ["BFS", "Topological sort"], "Determine whether all courses can be completed given prerequisite pairs.", "A cycle means the schedule is impossible. Track indegrees and repeatedly remove nodes with no prerequisites."],
-  ["maximum-subarray", "Maximum subarray", "DSA", "Medium", "52.0", "22 min", ["Dynamic programming", "Arrays"], "Find the contiguous subarray with the largest sum.", "Track the best sum ending at the current index. Either extend the previous subarray or start again."],
-  ["word-break", "Word break", "DSA", "Medium", "46.8", "31 min", ["DP", "Strings"], "Return whether a string can be segmented into a sequence of dictionary words.", "Let dp[i] represent whether the prefix ending at i can be formed. Test every valid previous cut."],
-  ["lru-cache", "Design an LRU cache", "DSA", "Hard", "38.4", "34 min", ["Hash map", "Linked list"], "Design a data structure that follows the constraints of a least recently used cache.", "Pair a doubly linked list with a hash map. The map gives constant lookup while the list tracks recency."],
-  ["merge-intervals", "Merge intervals", "DSA", "Medium", "48.0", "24 min", ["Sorting", "Intervals"], "Merge every overlapping interval in a list.", "Sort by start time and compare each interval with the last merged block."],
-  ["sql-joins", "Employee department join", "Core CS", "Medium", "44.0", "20 min", ["SQL", "Joins"], "Return every employee's name, department, and salary, including employees without an assigned department.", "Use a LEFT JOIN from employees to departments so unmatched employees remain in the result."],
-  ["os-deadlock", "Deadlock detection", "Core CS", "Medium", "61.0", "18 min", ["Operating systems", "Concurrency"], "Explain the four Coffman conditions and identify changes that can prevent deadlock.", "Deadlock requires mutual exclusion, hold and wait, no preemption, and circular wait."],
-  ["http-cache", "HTTP Cache-Control", "Core CS", "Easy", "67.0", "10 min", ["Networking", "Web"], "Choose cache headers for a versioned asset and a private user profile response.", "Versioned assets can be public and immutable; personalized responses should be private and revalidated."],
-  ["probability-cards", "Conditional probability", "Aptitude", "Easy", "72.0", "12 min", ["Probability", "Aptitude"], "Derive the probability of a red card after a blue card was already removed.", "Update the sample space after the first event instead of reusing the original denominator."],
-  ["pipes-tanks", "Pipes and tanks", "Aptitude", "Easy", "68.0", "14 min", ["Ratios", "Work"], "Find the combined fill time for two pipes and account for an outlet.", "Convert each time into a rate per minute, add inlet rates, subtract the outlet, then invert."],
-  ["url-shortener", "Design a URL shortener", "System design", "Medium", "32.0", "40 min", ["Architecture", "Databases"], "Design a highly available URL shortener that supports redirects, analytics, and expiry.", "Start with the redirect read path, a collision-safe key generator, a durable store, and queued analytics."],
-  ["producer-consumer", "Producer consumer", "Core CS", "Medium", "49.0", "24 min", ["Concurrency", "Queues"], "Implement a bounded producer-consumer queue with correct wait and signal behavior.", "Protect the buffer with a lock and wait in a loop because wakeups do not prove the predicate is true."],
-  ["binary-tree", "Binary tree level order", "DSA", "Medium", "71.0", "20 min", ["Trees", "BFS"], "Return the values of a binary tree grouped by depth.", "A queue models breadth-first traversal. Process its current length as one level."],
-  ["trapping-rain-water", "Trapping rain water", "DSA", "Hard", "63.1", "41 min", ["Two pointers", "Prefix"], "Given an elevation map, compute how much water it can trap after raining.", "Two pointers maintain the highest wall from each side, allowing a linear scan with constant space."],
-  ["fizzbuzz", "FizzBuzz", "DSA", "Easy", "78.0", "8 min", ["Loops", "Implementation"], "Print numbers from 1 to n, replacing multiples of three and five with their words.", "Check divisibility by 15 before checking 3 or 5 to avoid overlapping output rules."],
-].map(([id, title, category, difficulty, acceptance, time, tags, prompt, explanation]) => ({ id, title, category, difficulty, acceptance, time, tags, prompt, explanation }));
+
 
 const companies = [
   { id: "tcs", name: "TCS NQT", logo: "T", rounds: 4, applicants: "3.2M annual", focus: "Aptitude, coding, communication", overview: "TCS NQT commonly moves from a general ability screen into advanced quantitative reasoning, a coding section, and a final interview. Balance speed with clean fundamentals.", plan: ["Foundation: numerical ability, verbal ability, reasoning, and data interpretation.", "Advanced: tougher reasoning sets under strict time pressure.", "Coding: arrays, strings, sorting, recursion, SQL, and one medium implementation problem.", "Interview: project walkthrough, OOP, operating systems, DBMS, and communication."] },
@@ -88,16 +75,55 @@ const starterCode = {
   java: "public class Main {\n  static int[] solve(int[] values, int target) {\n    // write the invariant first\n    return new int[] {};\n  }\n\n  public static void main(String[] args) {\n    System.out.println(\"Ready for the invariant\");\n  }\n}",
 };
 
-function getProgress() {
+// function getProgress() {
+//   try {
+//     return JSON.parse(localStorage.getItem("prepcore_progress") || "{\"solved\":47,\"minutes\":382,\"streak\":6,\"readiness\":68,\"completed\":[]}");
+//   } catch {
+//     return { solved: 47, minutes: 382, streak: 6, readiness: 68, completed: [] };
+//   }
+// }
+
+// function saveProgress(next) {
+//   localStorage.setItem("prepcore_progress", JSON.stringify(next));
+//   window.dispatchEvent(new Event("prepcore-progress"));
+// }
+// Helper to get a unique storage key for each user
+function getUserKey() {
   try {
-    return JSON.parse(localStorage.getItem("prepcore_progress") || "{\"solved\":47,\"minutes\":382,\"streak\":6,\"readiness\":68,\"completed\":[]}");
-  } catch {
-    return { solved: 47, minutes: 382, streak: 6, readiness: 68, completed: [] };
+    const saved = localStorage.getItem("prepcore_user") || localStorage.getItem("auth_token");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.email) return `prepcore_progress_${parsed.email}`;
+      if (parsed.id) return `prepcore_progress_${parsed.id}`;
+    }
+  } catch (e) {
+    // fallback
   }
+  return "prepcore_progress_default";
 }
 
+// Get user progress (defaults to 0 for new users)
+function getProgress() {
+  try {
+    const key = getUserKey();
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    // fallback
+  }
+  return { solved: 0, minutes: 0, streak: 0, readiness: 0, completed: [] };
+}
+
+// Save progress to the current user's profile
 function saveProgress(next) {
-  localStorage.setItem("prepcore_progress", JSON.stringify(next));
+  try {
+    const key = getUserKey();
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch (e) {
+    // fallback
+  }
   window.dispatchEvent(new Event("prepcore-progress"));
 }
 
@@ -110,13 +136,14 @@ const navGroups = [
   ["Preparation", [["/company", "Company plans", "◇"], ["/tests", "Mock tests", "◷"], ["/core-cs", "Core CS", "▣"], ["/courses", "Courses", "▤"]]],
   ["Career kit", [["/resume", "Resume match", "□"], ["/contact", "Contact", "↗"]]],
 ];
-
 function Shell({ children }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   const userName = getUserName();
   const initials = userName.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+
+  const todayFormatted = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 
   useEffect(() => {
     document.documentElement.className = theme;
@@ -169,7 +196,7 @@ function Shell({ children }) {
         <header className="topbar">
           <span className="topbar-kicker">Placement preparation / 2026</span>
           <div className="topbar-right">
-            <span>Sun, 27 Sep</span>
+            <span>{todayFormatted}</span>
             <ThemeToggle theme={theme} setTheme={setTheme} />
             <span className="avatar" title={userName}>{initials || "ST"}</span>
             <button className="logout-button" onClick={logout}>Exit</button>
@@ -180,7 +207,6 @@ function Shell({ children }) {
     </div>
   );
 }
-
 function LoadingBlock() {
   return <div className="panel panel-pad"><div className="skeleton" style={{ width: "38%", height: 16 }} /><div className="skeleton" style={{ width: "62%", height: 38, marginTop: 16 }} /><div className="skeleton" style={{ width: "86%", height: 10, marginTop: 12 }} /></div>;
 }
@@ -189,24 +215,95 @@ function DashboardHome() {
   const [progress, setProgress] = useState(getProgress);
   const userName = getUserName();
   const greeting = getGreeting();
+  const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-  useEffect(() => { const update = () => setProgress(getProgress()); window.addEventListener("prepcore-progress", update); return () => window.removeEventListener("prepcore-progress", update); }, []);
+  useEffect(() => { 
+    const update = () => setProgress(getProgress()); 
+    window.addEventListener("prepcore-progress", update); 
+    return () => window.removeEventListener("prepcore-progress", update); 
+  }, []);
+
   const heat = [["Arrays", 86], ["Trees", 71], ["DP", 54], ["Graphs", 44], ["Core CS", 77], ["Aptitude", 63]];
   
-  return <Page>
-    <div className="eyebrow">Sunday / command center</div>
-    <h1 className="headline">{greeting}, {userName}.</h1>
-    <p className="lede">Your next useful hour is already mapped.</p>
-    <div className="metric-grid">{[[`${progress.readiness}%`, "Readiness"], [`${progress.solved}`, "Problems solved"], [`${progress.streak}`, "Day streak"], [`${progress.minutes}m`, "Study time"]].map(([value, label]) => <div className="metric" key={label}><span className="metric-value">{value}</span><span className="metric-name">{label}</span></div>)}</div>
-    <div className="split-wide dashboard-split">
-      <section><div className="section-line"><div><div className="eyebrow">Priority queue</div><div className="section-title">Your next actions</div></div><span className="mono small">03 ITEMS</span></div><div className="panel rule-list">
-        <Link className="action-row" to="/practice/word-break"><div><div className="mono tiny">CONTINUE / 31 MIN</div><strong>Finish dynamic programming foundations</strong><div className="muted">Word break · medium · 46.8% acceptance</div></div><span>›</span></Link>
-        <Link className="action-row" to="/tests/google-screen"><div><div className="mono tiny">ASSESS / 45 MIN</div><strong>Run a phone screen simulation</strong><div className="muted">Google-style coding screen · 3 questions</div></div><span>›</span></Link>
-        <Link className="action-row" to="/company/google"><div><div className="mono tiny">PREP / 20 MIN</div><strong>Read the Google loop plan</strong><div className="muted">Algorithms · systems thinking · 5 rounds</div></div><span>›</span></Link>
-      </div></section>
-      <aside><div className="section-line"><div><div className="eyebrow">Signal map</div><div className="section-title">Topic readiness</div></div></div><div className="panel panel-pad"><div className="heatmap">{Array.from({ length: 35 }, (_, index) => { const score = heat[index % heat.length][1]; return <div className="heat-cell" data-level={score > 75 ? 4 : score > 55 ? 3 : score > 35 ? 2 : 1} key={index} title={`${heat[index % heat.length][0]}: ${score}%`} />; })}</div><div className="rule-list topic-list">{heat.slice(0, 4).map(([topic, score]) => <div key={topic}><span>{topic}</span><span className="mono">{score}%</span></div>)}</div></div></aside>
-    </div>
-  </Page>;
+  return (
+    <Page>
+      <div className="eyebrow">{currentDay.toUpperCase()} / COMMAND CENTER</div>
+      <h1 className="headline">{greeting}, {userName}.</h1>
+      <p className="lede">Your next useful hour is already mapped.</p>
+      
+      <div className="metric-grid">
+        {[[`${progress?.readiness || 0}%`, "Readiness"], [`${progress?.solved || 0}`, "Problems solved"], [`${progress?.streak || 0}`, "Day streak"], [`${progress?.minutes || 0}m`, "Study time"]].map(([value, label]) => (
+          <div className="metric" key={label}>
+            <span className="metric-value">{value}</span>
+            <span className="metric-name">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="split-wide dashboard-split">
+        <section>
+          <div className="section-line">
+            <div>
+              <div className="eyebrow">Priority queue</div>
+              <div className="section-title">Your next actions</div>
+            </div>
+            <span className="mono small">03 ITEMS</span>
+          </div>
+          <div className="panel rule-list">
+            <Link className="action-row" to="/practice/word-break">
+              <div>
+                <div className="mono tiny">CONTINUE / 31 MIN</div>
+                <strong>Finish dynamic programming foundations</strong>
+                <div className="muted">Word break · medium · 46.8% acceptance</div>
+              </div>
+              <span>›</span>
+            </Link>
+            <Link className="action-row" to="/tests/google-screen">
+              <div>
+                <div className="mono tiny">ASSESS / 45 MIN</div>
+                <strong>Run a phone screen simulation</strong>
+                <div className="muted">Google-style coding screen · 3 questions</div>
+              </div>
+              <span>›</span>
+            </Link>
+            <Link className="action-row" to="/company/google">
+              <div>
+                <div className="mono tiny">PREP / 20 MIN</div>
+                <strong>Read the Google loop plan</strong>
+                <div className="muted">Algorithms · systems thinking · 5 rounds</div>
+              </div>
+              <span>›</span>
+            </Link>
+          </div>
+        </section>
+
+        <aside>
+          <div className="section-line">
+            <div>
+              <div className="eyebrow">Signal map</div>
+              <div className="section-title">Topic readiness</div>
+            </div>
+          </div>
+          <div className="panel panel-pad">
+            <div className="heatmap">
+              {Array.from({ length: 35 }, (_, index) => { 
+                const score = heat[index % heat.length][1]; 
+                return <div className="heat-cell" data-level={score > 75 ? 4 : score > 55 ? 3 : score > 35 ? 2 : 1} key={index} title={`${heat[index % heat.length][0]}: ${score}%`} />; 
+              })}
+            </div>
+            <div className="rule-list topic-list">
+              {heat.slice(0, 4).map(([topic, score]) => (
+                <div key={topic}>
+                  <span>{topic}</span>
+                  <span className="mono">{score}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </Page>
+  );
 }
 
 function Page({ children }) {
@@ -214,29 +311,160 @@ function Page({ children }) {
 }
 
 function Practice() {
+  const [practiceData, setPracticeData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All topics");
   const [difficulty, setDifficulty] = useState("All levels");
-  const [javaProblems, setJavaProblems] = useState([]);
-  const categories = ["All topics", ...new Set(practiceData.map((item) => item.category))];
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 24;
+
+  const categories = ["All topics", "DSA", "General Aptitude", "Core CS"];
+
+  // Fetch data from phpMyAdmin via PHP endpoint
+  const fetchQuestions = () => {
+    setLoading(true);
+    fetch(`${PHP_BASE_URL}/get_practice_questions.php`)
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.status === "success" && Array.isArray(result.data)) {
+          setPracticeData(result.data);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load questions from database:", err);
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    fetch(`${JAVA_BASE_URL}/api/coding-problems`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Java service unavailable")))
-      .then((result) => setJavaProblems(Array.isArray(result.data) ? result.data : []))
-      .catch(() => setJavaProblems([]));
+    fetchQuestions();
   }, []);
-  const questions = useMemo(() => practiceData.filter((item) => {
-    const text = `${item.title} ${item.category} ${item.tags.join(" ")} ${item.prompt}`.toLowerCase();
-    return (!search || text.includes(search.toLowerCase())) && (category === "All topics" || item.category === category) && (difficulty === "All levels" || item.difficulty === difficulty);
-  }), [search, category, difficulty]);
-  return <Page><div className="eyebrow">Practice bank / {practiceData.length.toString().padStart(3, "0")} questions</div><h1 className="headline">Make the hard thing<br />specific.</h1><p className="lede">Search by the shape of the problem, filter by the pressure you want, and start with a clear clock.</p>
-    <div className="toolbar"><input className="field search-field" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="⌕  Search problems or tags" /><select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select><select className="select" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>{["All levels", "Easy", "Medium", "Hard"].map((item) => <option key={item}>{item}</option>)}</select></div>
-    {javaProblems.length > 0 && <div className="backend-strip"><div><div className="eyebrow">Java coding arena / database connected</div><p>{javaProblems.length} coding problems are being served by the Java servlet from MySQL.</p></div><span className="mono tiny">LIVE</span></div>}
-    {questions.length ? <div className="card-grid">{questions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} />)}</div> : <div className="empty"><strong>Nothing matches that cut.</strong><p className="muted">Try a broader topic or clear the search.</p><button className="btn btn-quiet" onClick={() => { setSearch(""); setCategory("All topics"); setDifficulty("All levels"); }}>Clear filters</button></div>}
-  </Page>;
+
+  const questions = useMemo(() => {
+    return practiceData.filter((item) => {
+      const text = `${item.title} ${item.category} ${(item.tags || []).join(" ")} ${item.prompt}`.toLowerCase();
+      const matchesSearch = !search || text.includes(search.toLowerCase());
+      const matchesCategory = category === "All topics" || item.category === category;
+      const matchesDifficulty = difficulty === "All levels" || item.difficulty === difficulty;
+      return matchesSearch && matchesCategory && matchesDifficulty;
+    });
+  }, [practiceData, search, category, difficulty]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, category, difficulty]);
+
+  const paginatedQuestions = useMemo(() => {
+    const start = (page - 1) * itemsPerPage;
+    return questions.slice(start, start + itemsPerPage);
+  }, [questions, page]);
+
+  const totalPages = Math.ceil(questions.length / itemsPerPage);
+
+  const dsaCount = useMemo(() => practiceData.filter((q) => q.category === "DSA").length, [practiceData]);
+  const aptCount = useMemo(() => practiceData.filter((q) => q.category === "General Aptitude").length, [practiceData]);
+
+  if (loading) {
+    return (
+      <Page>
+        <div className="eyebrow">PRACTICE BANK / MYSQL CONNECTED</div>
+        <h1 className="headline">Loading practice bank...</h1>
+        <p className="lede">Fetching questions directly from phpMyAdmin database.</p>
+      </Page>
+    );
+  }
+
+  return (
+    <Page>
+      <div className="eyebrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>
+          PRACTICE BANK / {questions.length} QUESTIONS VISIBLE ({dsaCount} DSA · {aptCount} APTITUDE)
+        </span>
+        <button className="btn btn-quiet" onClick={fetchQuestions} style={{ padding: "4px 12px", fontSize: "12px" }}>
+          ↻ Refresh from MySQL
+        </button>
+      </div>
+
+      <h1 className="headline">
+        Make the hard thing
+        <br />
+        specific.
+      </h1>
+      <p className="lede">
+        Questions dynamically queried from phpMyAdmin. Filter by DSA or General Aptitude with live database updates.
+      </p>
+
+      {/* Toolbar */}
+      <div className="toolbar" style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "24px" }}>
+        <input
+          className="field search-field"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="⌕ Search database records..."
+          style={{ flex: "1 1 300px" }}
+        />
+        <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
+          {categories.map((cat) => (
+            <option key={cat}>{cat}</option>
+          ))}
+        </select>
+        <select className="select" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+          {["All levels", "Easy", "Medium", "Hard"].map((lvl) => (
+            <option key={lvl}>{lvl}</option>
+          ))}
+        </select>
+      </div>
+
+      {paginatedQuestions.length ? (
+        <>
+          <div className="card-grid">
+            {paginatedQuestions.map((question, index) => (
+              <QuestionCard key={question.id} question={question} index={index} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "32px" }}>
+              <button
+                className="btn btn-quiet"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                ← Previous
+              </button>
+              <span className="mono tiny">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                className="btn btn-quiet"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="empty">
+          <strong>No matching database records found.</strong>
+          <p className="muted">Try another filter or clear search.</p>
+          <button
+            className="btn btn-quiet"
+            onClick={() => {
+              setSearch("");
+              setCategory("All topics");
+              setDifficulty("All levels");
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+    </Page>
+  );
 }
 
 function QuestionCard({ question, index }) {
@@ -254,18 +482,190 @@ function CodeLab({ question, onClose }) {
 }
 
 function PracticeDetail({ id }) {
-  const question = practiceData.find((item) => item.id === id) || practiceData[0];
+  const [question, setQuestion] = useState(null);
   const [labOpen, setLabOpen] = useState(false);
-  const [solved, setSolved] = useState(() => getProgress().completed.includes(question.id));
+  const [solved, setSolved] = useState(false);
+  
+  // Calculator & Scratchpad States
+  const [showCalc, setShowCalc] = useState(false);
+  const [calcDisplay, setCalcDisplay] = useState("");
+  const [calcResult, setCalcResult] = useState("");
+
+  useEffect(() => {
+    fetch(`${PHP_BASE_URL}/get_practice_questions.php`)
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.status === "success" && Array.isArray(result.data)) {
+          const found = result.data.find((item) => item.id === id) || result.data[0];
+          setQuestion(found);
+          setSolved(getProgress().completed.includes(found?.id));
+        }
+      })
+      .catch((err) => console.error("Error fetching detail:", err));
+  }, [id]);
+
+  const handleCalcInput = (btn) => {
+    if (btn === "C") {
+      setCalcDisplay("");
+      setCalcResult("");
+    } else if (btn === "=") {
+      try {
+        // Safe evaluation for simple calculations
+        const evalResult = Function(`'use strict'; return (${calcDisplay})`)();
+        setCalcResult(String(evalResult));
+      } catch (e) {
+        setCalcResult("Error");
+      }
+    } else {
+      setCalcDisplay((prev) => prev + btn);
+    }
+  };
+
   const markSolved = () => {
+    if (!question) return;
     const progress = getProgress();
     if (!progress.completed.includes(question.id)) {
-      saveProgress({ ...progress, solved: progress.solved + 1, readiness: Math.min(100, progress.readiness + 2), completed: [...progress.completed, question.id] });
+      saveProgress({
+        ...progress,
+        solved: progress.solved + 1,
+        readiness: Math.min(100, progress.readiness + 2),
+        completed: [...progress.completed, question.id],
+      });
     }
     setSolved(true);
   };
-  if (labOpen) return <Page><button className="eyebrow lab-back" onClick={() => setLabOpen(false)}>← {question.title}</button><CodeLab question={question} onClose={() => setLabOpen(false)} /></Page>;
-  return <Page><Link to="/practice" className="eyebrow">← Practice bank</Link><div className="split-wide detail-split"><section><div className="button-row"><span className="tag tag-fill">{question.difficulty}</span><span className="tag">{question.category}</span></div><h1 className="headline">{question.title}</h1><p className="lede">{question.prompt}</p><div className="lab"><div className="lab-copy"><div className="eyebrow">Code lab / ready</div><h2>Start from the constraint.</h2><p>Switch languages, edit the starter, run a local feedback pass, and keep the explanation close to the invariant.</p><button className="btn btn-primary" onClick={() => setLabOpen(true)}>Enter code lab →</button></div><div className="code-box">01  function solve(input) {"{"}<br />02    // name the invariant<br />03    const answer = null;<br />04    return answer;<br />05  {"}"}</div></div><button className="btn btn-primary" onClick={markSolved} disabled={solved}>{solved ? "Problem solved ✓" : "Mark problem solved ✓"}</button></section><aside><div className="panel panel-pad"><div className="eyebrow">Field notes</div><Info label="Expected time" value={question.time} /><Info label="Acceptance" value={`${question.acceptance}%`} /><div className="info-block"><div className="mono tiny">TOOLS</div><div className="tag-row">{question.tags.map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div></div></div><div className="panel panel-pad side-gap"><div className="eyebrow">After the attempt</div><p>{question.explanation}</p></div></aside></div></Page>;
+
+  if (!question) {
+    return (
+      <Page>
+        <div className="eyebrow">PRACTICE DETAIL</div>
+        <h1 className="headline">Loading question...</h1>
+      </Page>
+    );
+  }
+
+  const isAptitude = question.category === "General Aptitude";
+
+  if (labOpen && !isAptitude) {
+    return (
+      <Page>
+        <button className="eyebrow lab-back" onClick={() => setLabOpen(false)}>
+          ← {question.title}
+        </button>
+        <CodeLab question={question} onClose={() => setLabOpen(false)} />
+      </Page>
+    );
+  }
+
+  return (
+    <Page>
+      <Link to="/practice" className="eyebrow">
+        ← Practice bank
+      </Link>
+      <div className="split-wide detail-split">
+        <section>
+          <div className="button-row">
+            <span className="tag tag-fill">{question.difficulty}</span>
+            <span className="tag">{question.category}</span>
+          </div>
+          <h1 className="headline">{question.title}</h1>
+          <p className="lede">{question.prompt}</p>
+
+          {isAptitude ? (
+            <div className="panel panel-pad" style={{ marginTop: "24px", marginBottom: "24px", background: "var(--bg-secondary)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="eyebrow">General Aptitude Notes & Tools</div>
+                <button 
+                  className="btn btn-quiet" 
+                  onClick={() => setShowCalc(!showCalc)}
+                  style={{ padding: "4px 10px", fontSize: "12px" }}
+                >
+                  {showCalc ? "Hide Calculator ✖" : "🧮 Optional Calculator"}
+                </button>
+              </div>
+
+              {/* Step-by-Step Solving Approach from MySQL */}
+              <div style={{ padding: "16px", background: "var(--bg-primary)", borderRadius: "6px", margin: "16px 0", borderLeft: "3px solid var(--accent-color)" }}>
+                <strong style={{ display: "block", marginBottom: "8px" }}>Step-by-Step Approach & Notes:</strong>
+                <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", color: "var(--text-muted)", margin: 0 }}>
+                  {question.solving_notes || question.explanation}
+                </pre>
+              </div>
+
+              {/* Optional Calculator */}
+              {showCalc && (
+                <div style={{ padding: "16px", background: "var(--bg-primary)", borderRadius: "6px", maxWidth: "280px" }}>
+                  <div className="mono tiny" style={{ marginBottom: "6px" }}>SCRATCHPAD CALCULATOR</div>
+                  <input className="field" value={calcDisplay} readOnly placeholder="0" style={{ textAlign: "right", marginBottom: "8px" }} />
+                  {calcResult && <div style={{ textAlign: "right", fontWeight: "bold", marginBottom: "8px" }}>= {calcResult}</div>}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+                    {["7","8","9","/","4","5","6","*","1","2","3","-","0",".","=","+","C"].map((btn) => (
+                      <button 
+                        key={btn} 
+                        className="btn btn-quiet" 
+                        onClick={() => handleCalcInput(btn)}
+                        style={{ padding: "8px", gridColumn: btn === "C" ? "span 4" : "span 1" }}
+                      >
+                        {btn}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="lab">
+              <div className="lab-copy">
+                <div className="eyebrow">Code lab / ready</div>
+                <h2>Start from the constraint.</h2>
+                <p>Switch languages, edit the starter, run a local feedback pass, and keep the explanation close to the invariant.</p>
+                <button className="btn btn-primary" onClick={() => setLabOpen(true)}>
+                  Enter code lab →
+                </button>
+              </div>
+              <div className="code-box">
+                01 function solve(input) {"{"}
+                <br />
+                02 // name the invariant
+                <br />
+                03 const answer = null;
+                <br />
+                04 return answer;
+                <br />
+                05 {"}"}
+              </div>
+            </div>
+          )}
+
+          <button className="btn btn-primary" onClick={markSolved} disabled={solved}>
+            {solved ? "Problem solved ✓" : "Mark problem solved ✓"}
+          </button>
+        </section>
+
+        <aside>
+          <div className="panel panel-pad">
+            <div className="eyebrow">Field notes</div>
+            <Info label="Target time" value={question.time} />
+            <Info label="Acceptance" value={`${question.acceptance}%`} />
+            <div className="info-block">
+              <div className="mono tiny">TOPICS & TAGS</div>
+              <div className="tag-row">
+                {(question.tags || []).map((tag) => (
+                  <span className="tag" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="panel panel-pad side-gap">
+            <div className="eyebrow">Shortcut Rule</div>
+            <p>{question.explanation}</p>
+          </div>
+        </aside>
+      </div>
+    </Page>
+  );
 }
 
 function Info({ label, value }) {

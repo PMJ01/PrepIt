@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_BASE_URL = '/backend-php';
+const API_BASE_URL = 'http://localhost:8000'; // Adjust this to your PHP server's URL
 
 export default function Login({ onLoginSuccess }) {
   const [mode, setMode] = useState('signin');

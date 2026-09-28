@@ -6,7 +6,7 @@ header("Content-Type: application/json; charset=UTF-8");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit();
+    exit(0);
 }
 
 require_once 'db_connect.php';
@@ -21,7 +21,7 @@ if (empty($data['email']) || empty($data['password'])) {
 $email = strtolower(trim($data['email']));
 $password = $data['password'];
 
-$stmt = $conn->prepare("SELECT id, full_name, email, password_hash FROM users WHERE email = ?");
+$stmt = $conn->prepare("SELECT id, username, email, password_hash FROM users WHERE email = ?");
 $stmt->bind_param("s", $email);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -33,7 +33,7 @@ if ($user = $result->fetch_assoc()) {
             "message" => "Login successful",
             "user" => [
                 "id" => $user['id'],
-                "full_name" => $user['full_name'],
+                "username" => $user['username'],
                 "email" => $user['email']
             ]
         ]);
