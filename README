@@ -1,0 +1,24 @@
+prepcore/
+├── package.json
+├── index.html
+├── postcss.config.js
+├── tailwind.config.js
+├── src/
+│   ├── main.jsx
+│   ├── App.jsx
+│   ├── index.css
+│   └── components/
+│       ├── Login.jsx
+│       ├── Dashboard.jsx
+│       ├── ParticlesBackground.jsx
+│       └── ThemeToggle.jsx
+├── backend-php/
+│   ├── db_connect.php
+│   ├── auth_middleware.php
+│   ├── login.php
+│   └── get_notes.php
+├── backend-java/
+│   ├── AuthFilter.java
+│   └── CodingProblemsServlet.java
+└── database/
+    └── schema.sql
