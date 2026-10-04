@@ -1,4 +1,4 @@
-Prepit/
+portal/
 ├── package.json
 ├── index.html
 ├── postcss.config.js
